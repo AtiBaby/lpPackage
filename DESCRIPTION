@@ -1,0 +1,10 @@
+Package: lpPackage
+Title: Solver to Linear Programing with Shiny
+Version: 0.1
+Author: Attila Holhos <atibaby@citromail.hu>
+Maintainer: Attila Holhos <atibaby@citromail.hu>
+Description: These functions solve linear problems. These use the shiny to the User Interface.
+Encoding: UTF-8
+License: No
+LazyData: true
+RoxygenNote: 6.0.1
