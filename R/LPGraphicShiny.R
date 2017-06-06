@@ -392,14 +392,16 @@ LPGraphicShiny <- function () {
         }
 
         #A célfüggvény kirajzolása, hogy az optimális megoldást érinti.
-        if (length(input$constrains) == nrow(constrainList) & nrow(constrainList)>0 & solution[2] == 0){
-          if (model.obj[2] != 0) {
-            abline(a = x_axes_to_solution,
-                 b = round(-1*model.obj[1]/model.obj[2],4), col = "red")
-          } else {
-            abline(v = solutions.coordinate[1], col = "red")
+        if (length(input$constrains) == nrow(constrainList) && nrow(constrainList)>0) {
+          if(solution[2] == 0){
+            if (model.obj[2] != 0) {
+              abline(a = x_axes_to_solution,
+                   b = round(-1*model.obj[1]/model.obj[2],4), col = "red")
+            } else {
+              abline(v = solutions.coordinate[1], col = "red")
+            }
+            points(solutions.coordinate[1], solutions.coordinate[2], col = "blue", pch = 19)
           }
-          points(solutions.coordinate[1], solutions.coordinate[2], col = "blue", pch = 19)
         }
 
       })

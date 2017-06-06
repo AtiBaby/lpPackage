@@ -175,68 +175,112 @@ LPSolver <- function () {
 
   server <- function(input, output, session) {
 
-  inputsValid <- function() {
-    isNotZeroObjFuncCoeff = FALSE
-    for(i in 1:numberOfVariables) {
-      if(is.na(as.numeric(input[[paste0("objFuncCoeff",i)]]))) {
-        return (paste0("Empty or not a number value in the objective function's coefficients! (at x", i, ")"))
-      }
-      if(as.numeric(input[[paste0("objFuncCoeff",i)]]) != 0) {
-        isNotZeroObjFuncCoeff = TRUE
-      }
-    }
-    if(isNotZeroObjFuncCoeff == FALSE){
-      return ("At least one objective function's coefficient must be not zero!")
-    }
-
-    for (i in 1:numberOfConstraints) {
-      for (j in 1:numberOfVariables) {
-        if (is.na(as.numeric(input[[paste0("x",j,"_value_",i)]]))) {
-          return (paste0("Empty or not a number value in the ", i, ". constraint at x",j,"!"))
+    inputsValid <- function() {
+      isNotZeroObjFuncCoeff = FALSE
+      for(i in 1:numberOfVariables) {
+        if(is.na(as.numeric(input[[paste0("objFuncCoeff",i)]]))) {
+          return (paste0("Empty or not a number value in the objective function's coefficients! (at x", i, ")"))
+        }
+        if(as.numeric(input[[paste0("objFuncCoeff",i)]]) != 0) {
+          isNotZeroObjFuncCoeff = TRUE
         }
       }
-      if (is.na(as.numeric(input[[paste0("rs_value_",i)]]))) {
-        return (paste0("Empty or not a number value in the ", i, ". constraint at right side value!"))
+      if(isNotZeroObjFuncCoeff == FALSE){
+        return ("At least one objective function's coefficient must be not zero!")
       }
+
+      for (i in 1:numberOfConstraints) {
+        for (j in 1:numberOfVariables) {
+          if (is.na(as.numeric(input[[paste0("x",j,"_value_",i)]]))) {
+            return (paste0("Empty or not a number value in the ", i, ". constraint at x",j,"!"))
+          }
+        }
+        if (is.na(as.numeric(input[[paste0("rs_value_",i)]]))) {
+          return (paste0("Empty or not a number value in the ", i, ". constraint at right side value!"))
+        }
+      }
+      return (NULL);
     }
-    return (NULL);
-  }
 
-  observeEvent(input$variables,{
-    if(is.na(as.numeric(input$variablesInput)) || as.numeric(input$variablesInput) <= 0){
-      output$errorMessage <- renderText({
-        "Variables number must be a natural number (greater than ZERO)!"
-      })
-    } else {
-      numberOfVariables <<- as.numeric(input$variablesInput)
-      removeUI("#numberOfVariables")
-      insertUI("#solution", where = "beforeBegin", ui =
-                 div(id = "ObjectiveFunctionInputFields",
-                 textOutput("objectfunctText")
-                 )
-              )
-      for(i in 1:numberOfVariables){
+    observeEvent(input$variables,{
+      if(is.na(as.numeric(input$variablesInput)) || as.numeric(input$variablesInput) <= 0){
+        output$errorMessage <- renderText({
+          "Variables number must be a natural number (greater than ZERO)!"
+        })
+      } else {
+        numberOfVariables <<- as.numeric(input$variablesInput)
+        removeUI("#numberOfVariables")
+        insertUI("#solution", where = "beforeBegin", ui =
+                   div(id = "ObjectiveFunctionInputFields",
+                   textOutput("objectfunctText")
+                   )
+                )
+        for(i in 1:numberOfVariables){
+          insertUI("#ObjectiveFunctionInputFields", where = "beforeEnd", ui =
+            div(style="display: inline-block",textInput(paste0("objFuncCoeff",i),label="", width = "70px")))
+          insertUI("#ObjectiveFunctionInputFields", where = "beforeEnd", ui =
+            div(style="display: inline-block; margin: 2px",textOutput(paste0("objFuncx",i), inline = TRUE))
+          )
+        }
         insertUI("#ObjectiveFunctionInputFields", where = "beforeEnd", ui =
-          div(style="display: inline-block",textInput(paste0("objFuncCoeff",i),label="", width = "70px")))
-        insertUI("#ObjectiveFunctionInputFields", where = "beforeEnd", ui =
-          div(style="display: inline-block; margin: 2px",textOutput(paste0("objFuncx",i), inline = TRUE))
+          div(style="display: inline-block",selectInput("objFuncType", "", choices = c("max","min"), selected = "max", width = "70px"))
         )
+
+        insertUI("#ObjectiveFunctionInputFields", where = "afterEnd", ui=
+                   div(id = "constraintsInputFields", style="display: block",
+                       div(style="margin-top: 5px", textOutput("constraintsText"))
+                   ))
+        for(i in 1:numberOfVariables) {
+          insertUI("#constraintsInputFields", where = "beforeEnd", ui =
+                     div(style="display: inline-block",textInput(paste0("x",i,"_value_",numberOfConstraints), label = "", width = "70px"))
+          )
+          insertUI("#constraintsInputFields", where = "beforeEnd", ui =
+                     div(style="display: inline-block; margin: 2px",textOutput(paste0("x", i), inline = TRUE))
+          )
+        }
+        insertUI("#constraintsInputFields", where = "beforeEnd", ui =
+                   div(style="display: inline-block; margin: 2px", selectInput(paste0("comparison_sign_", numberOfConstraints), label = "", choices = c("=","<=",">="), width ='65px'))
+        )
+        insertUI("#constraintsInputFields", where = "beforeEnd", ui =
+                   div(style="display: inline-block; margin: 2px", textInput(paste0("rs_value_",numberOfConstraints), label = "", width = '70px'))
+        )
+
+        insertUI("#constraintsInputFields", where = "afterEnd", ui =
+                   div(id = "errorMessage", style="margin-top: 5px; color: red", textOutput("errorMessage")))
+        insertUI("#constraintsInputFields", where = "afterEnd", ui =
+                   div(style="display: inline-block", actionButton("solve","Solve")))
+        insertUI("#constraintsInputFields", where = "afterEnd", ui =
+                   div(style="display: inline-block; margin-right: 5px", actionButton("addConst","Add new constraint")))
+
+        lapply(1:numberOfVariables, function(i) {
+          if(i != numberOfVariables) {
+            output[[paste0("x", i)]] <- renderText({paste0(" * x", i, " + ")})
+            output[[paste0("objFuncx", i)]] <- renderText({paste0(" * x", i, " + ")})
+          } else {
+            output[[paste0("x", i)]] <- renderText({paste0(" * x", i)})
+            output[[paste0("objFuncx", i)]] <- renderText({paste0(" * x", i, " -> ")})
+          }
+        })
       }
-      insertUI("#ObjectiveFunctionInputFields", where = "beforeEnd", ui =
-        div(style="display: inline-block",selectInput("objFuncType", "", choices = c("max","min"), selected = "max", width = "70px"))
-      )
+    })
 
-      insertUI("#ObjectiveFunctionInputFields", where = "afterEnd", ui=
-                 div(id = "constraintsInputFields", style="display: block",
-                     div(style="margin-top: 5px", textOutput("constraintsText"))
-                 ))
+    #Új feltétel hozzáadását lehetővé tevő felületi elemek hozzáadása
+    observeEvent(input$addConst, {
+      numberOfConstraints <<- numberOfConstraints + 1;
+
+      insertUI("#constraintsInputFields", ui = div())
       for(i in 1:numberOfVariables) {
-        insertUI("#constraintsInputFields", where = "beforeEnd", ui =
-                   div(style="display: inline-block",textInput(paste0("x",i,"_value_",numberOfConstraints), label = "", width = "70px"))
+        insertUI("#constraintsInputFields", ui =
+          div(style="display: inline-block",textInput(paste0("x",i,"_value_",numberOfConstraints), label = "", width = "70px"))
         )
-        insertUI("#constraintsInputFields", where = "beforeEnd", ui =
-                   div(style="display: inline-block; margin: 2px",textOutput(paste0("x", i), inline = TRUE))
+        insertUI("#constraintsInputFields", ui =
+          div(style="display: inline-block; margin: 2px",textOutput(paste0("x", i, "_", numberOfConstraints), inline = TRUE))
         )
+        if(i != numberOfVariables){
+          output[[paste0("x", i, "_", numberOfConstraints)]] <- renderText({paste0(" * x", i, " + ")})
+        } else {
+          output[[paste0("x", i, "_", numberOfConstraints)]] <- renderText({paste0(" * x", i, " ")})
+        }
       }
       insertUI("#constraintsInputFields", where = "beforeEnd", ui =
                  div(style="display: inline-block; margin: 2px", selectInput(paste0("comparison_sign_", numberOfConstraints), label = "", choices = c("=","<=",">="), width ='65px'))
@@ -245,135 +289,92 @@ LPSolver <- function () {
                  div(style="display: inline-block; margin: 2px", textInput(paste0("rs_value_",numberOfConstraints), label = "", width = '70px'))
       )
 
-      insertUI("#constraintsInputFields", where = "afterEnd", ui =
-                 div(id = "errorMessage", style="margin-top: 5px; color: red", textOutput("errorMessage")))
-      insertUI("#constraintsInputFields", where = "afterEnd", ui =
-                 div(style="display: inline-block", actionButton("solve","Solve")))
-      insertUI("#constraintsInputFields", where = "afterEnd", ui =
-                 div(style="display: inline-block; margin-right: 5px", actionButton("addConst","Add new constraint")))
-
       lapply(1:numberOfVariables, function(i) {
         if(i != numberOfVariables) {
-          output[[paste0("x", i)]] <- renderText({paste0(" * x", i, " + ")})
-          output[[paste0("objFuncx", i)]] <- renderText({paste0(" * x", i, " + ")})
+          output[[paste0("x", i, "_", numberOfConstraints)]] <- renderText({paste0(" * x", i, " + ")})
         } else {
-          output[[paste0("x", i)]] <- renderText({paste0(" * x", i)})
-          output[[paste0("objFuncx", i)]] <- renderText({paste0(" * x", i, " -> ")})
+          output[[paste0("x", i, "_", numberOfConstraints)]] <- renderText({paste0(" * x", i)})
         }
       })
-    }
-  })
+    })
 
-  #Új feltétel hozzáadását lehetővé tevő felületi elemek hozzáadása
-  observeEvent(input$addConst, {
-    numberOfConstraints <<- numberOfConstraints + 1;
 
-    insertUI("#constraintsInputFields", ui = div())
-    for(i in 1:numberOfVariables) {
-      insertUI("#constraintsInputFields", ui =
-        div(style="display: inline-block",textInput(paste0("x",i,"_value_",numberOfConstraints), label = "", width = "70px"))
-      )
-      insertUI("#constraintsInputFields", ui =
-        div(style="display: inline-block; margin: 2px",textOutput(paste0("x", i, "_", numberOfConstraints), inline = TRUE))
-      )
-      if(i != numberOfVariables){
-        output[[paste0("x", i, "_", numberOfConstraints)]] <- renderText({paste0(" * x", i, " + ")})
+    #Megoldása a feladatnak
+    observeEvent(input$solve, {
+      valid <- inputsValid()
+      if(is.null(valid)) {
+        startUp(numberOfVariables)
+        for (j in 1:numberOfVariables) {
+          model.obj <<- c(model.obj, as.numeric(input[[paste0("objFuncCoeff",j)]]))
+        }
+        for (i in 1:numberOfConstraints) {
+          rowToMatrix <- c()
+          for(j in 1:numberOfVariables) {
+            rowToMatrix <- c(rowToMatrix, as.numeric(input[[paste0("x",j,"_value_",i)]]))
+          }
+          model.con <<- rbind(model.con, rowToMatrix)
+          model.dir <<- c(model.dir, input[[paste0("comparison_sign_", numberOfConstraints)]])
+          model.rhs <<- c(model.rhs, as.numeric(input[[paste0("rs_value_",i)]]))
+        }
+        lpSolution <<- solveLP(model.obj, model.rhs, model.con, TRUE, model.dir, lpSolve = TRUE)
+        if(lpSolution$status == 0) {
+        calculateSolutionReport()
+
+        removeUI("#ObjectiveFunctionInputFields")
+        removeUI("#constraintsInputFields")
+        removeUI("#addConst")
+        removeUI("#solve")
+        removeUI("#errorMessage")
+        removeUI("#titleText")
+        insertUI("#title", ui = div(id = "titleText", "Solution report"))
+        insertUI("#reset", ui = actionButton("resetButton","Give a new problem"))
+
+        output$solutionText <- renderText("Solution")
+        output$solutionValueTable <- renderTable(solution.variables)
+        output$solutionConstraintTable <- renderTable(solution.constraints)
+        output$rangesVariablesText <- renderText("Objective coefficient ranges")
+        output$rangesVariablesTable <- renderTable(range.variables)
+        output$rangesConstraintText <-renderText("RHS ranges")
+        output$rangesConstraintTable <- renderTable(range.constraints)
+        } else {
+          output$rangesVariablesText <- renderText("There is not solution!")
+        }
       } else {
-        output[[paste0("x", i, "_", numberOfConstraints)]] <- renderText({paste0(" * x", i, " ")})
-      }
-    }
-    insertUI("#constraintsInputFields", where = "beforeEnd", ui =
-               div(style="display: inline-block; margin: 2px", selectInput(paste0("comparison_sign_", numberOfConstraints), label = "", choices = c("=","<=",">="), width ='65px'))
-    )
-    insertUI("#constraintsInputFields", where = "beforeEnd", ui =
-               div(style="display: inline-block; margin: 2px", textInput(paste0("rs_value_",numberOfConstraints), label = "", width = '70px'))
-    )
-
-    lapply(1:numberOfVariables, function(i) {
-      if(i != numberOfVariables) {
-        output[[paste0("x", i, "_", numberOfConstraints)]] <- renderText({paste0(" * x", i, " + ")})
-      } else {
-        output[[paste0("x", i, "_", numberOfConstraints)]] <- renderText({paste0(" * x", i)})
+        output$errorMessage <- renderText({
+          valid
+        })
       }
     })
-  })
 
-
-  #Megoldása a feladatnak
-  observeEvent(input$solve, {
-    valid <- inputsValid()
-    if(is.null(valid)) {
-      startUp(numberOfVariables)
-      for (j in 1:numberOfVariables) {
-        model.obj <<- c(model.obj, as.numeric(input[[paste0("objFuncCoeff",j)]]))
-      }
-      for (i in 1:numberOfConstraints) {
-        rowToMatrix <- c()
-        for(j in 1:numberOfVariables) {
-          rowToMatrix <- c(rowToMatrix, as.numeric(input[[paste0("x",j,"_value_",i)]]))
-        }
-        model.con <<- rbind(model.con, rowToMatrix)
-        model.dir <<- c(model.dir, input[[paste0("comparison_sign_", numberOfConstraints)]])
-        model.rhs <<- c(model.rhs, as.numeric(input[[paste0("rs_value_",i)]]))
-      }
-      lpSolution <<- solveLP(model.obj, model.rhs, model.con, TRUE, model.dir, lpSolve = TRUE)
-      if(lpSolution$status == 0) {
-      calculateSolutionReport()
-
-      removeUI("#ObjectiveFunctionInputFields")
-      removeUI("#constraintsInputFields")
-      removeUI("#addConst")
-      removeUI("#solve")
-      removeUI("#errorMessage")
+    observeEvent(input$resetButton, {
+      output$solutionText <- renderText("")
+      output$solutionValueTable <- renderTable(NULL)
+      output$solutionConstraintTable <- renderTable(NULL)
+      output$rangesVariablesText <- renderText("")
+      output$rangesVariablesTable <- renderTable(NULL)
+      output$rangesConstraintText <-renderText("")
+      output$rangesConstraintTable <- renderTable(NULL)
+      removeUI("#resetButton")
       removeUI("#titleText")
-      insertUI("#title", ui = div(id = "titleText", "Solution report"))
-      insertUI("#reset", ui = actionButton("resetButton","Give a new problem"))
+      insertUI("#title", ui = div(id = "titleText", "Linear problem"))
 
-      output$solutionText <- renderText("Solution")
-      output$solutionValueTable <- renderTable(solution.variables)
-      output$solutionConstraintTable <- renderTable(solution.constraints)
-      output$rangesVariablesText <- renderText("Objective coefficient ranges")
-      output$rangesVariablesTable <- renderTable(range.variables)
-      output$rangesConstraintText <-renderText("RHS ranges")
-      output$rangesConstraintTable <- renderTable(range.constraints)
-      } else {
-        output$rangesVariablesText <- renderText("There is not solution!")
-      }
-    } else {
-      output$errorMessage <- renderText({
-        valid
-      })
-    }
-  })
+      numberOfConstraints <<- 1
+      insertUI("#solution", where = "beforeBegin", ui =
+           div(id = "numberOfVariables",
+               textOutput("variablesText", inline = TRUE),
+               textInput("variablesInput",label="", width = "70px"),
+               actionButton("variables","Add")
+           ))
+    })
 
-  observeEvent(input$resetButton, {
-    output$solutionText <- renderText("")
-    output$solutionValueTable <- renderTable(NULL)
-    output$solutionConstraintTable <- renderTable(NULL)
-    output$rangesVariablesText <- renderText("")
-    output$rangesVariablesTable <- renderTable(NULL)
-    output$rangesConstraintText <-renderText("")
-    output$rangesConstraintTable <- renderTable(NULL)
-    removeUI("#resetButton")
-    removeUI("#titleText")
-    insertUI("#title", ui = div(id = "titleText", "Linear problem"))
-
-    numberOfConstraints <<- 1
-    insertUI("#solution", where = "beforeBegin", ui =
-         div(id = "numberOfVariables",
-             textOutput("variablesText", inline = TRUE),
-             textInput("variablesInput",label="", width = "70px"),
-             actionButton("variables","Add")
-         ))
-  })
-
-  output$objectfunctText <- renderText({"Objective function:"})
-  output$constraintsText <- renderText({"Constraints:"})
-  output$objFuncx1 <- renderText({" * x1 + "})
-  output$objFuncx2 <- renderText({" * x2 -> "})
-  output$x1 <- renderText({" * x1 + "})
-  output$x2 <- renderText({" * x2"})
-  output$variablesText <- renderText({"Number of variables in the problem:"})
+    output$objectfunctText <- renderText({"Objective function:"})
+    output$constraintsText <- renderText({"Constraints:"})
+    output$objFuncx1 <- renderText({" * x1 + "})
+    output$objFuncx2 <- renderText({" * x2 -> "})
+    output$x1 <- renderText({" * x1 + "})
+    output$x2 <- renderText({" * x2"})
+    output$variablesText <- renderText({"Number of variables in the problem:"})
   }
+
   shinyApp(ui=ui,server=server)
 }

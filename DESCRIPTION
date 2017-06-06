@@ -1,9 +1,9 @@
-Package: lpPackage
-Title: Solver to Linear Programing with Shiny
+Package: solveR
+Title: Solver that uses Shiny to give solutions for Linear Programing problems
 Version: 0.1
 Author: Attila Holhos <atibaby@citromail.hu>
 Maintainer: Attila Holhos <atibaby@citromail.hu>
-Description: These functions solve linear problems. These use the shiny to the User Interface.
+Description: This package contains three functions. With these, we can solve simple linear programing problems, transport problems and two variables LP problems with graphic method. 
 Encoding: UTF-8
 License: No
 LazyData: true
